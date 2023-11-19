@@ -10,12 +10,15 @@ module.exports = {
         type: Sequelize.INTEGER
       },
       title: {
+        allowNull: false,
         type: Sequelize.STRING
       },
       price: {
+        allowNull: false,
         type: Sequelize.INTEGER
       },
       stock: {
+        allowNull: false,
         type: Sequelize.INTEGER
       },
       CategoryId: {
