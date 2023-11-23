@@ -112,7 +112,7 @@ module.exports = (sequelize, DataTypes) => {
           msg: "balance must be an integer/number"
         },
         min: {
-          args: 0,
+          args: [0],
           msg: "balance must not be less than 0"
         },
         max: {
@@ -129,9 +129,10 @@ module.exports = (sequelize, DataTypes) => {
     sequelize,
     modelName: 'User',
     hooks: {
-      afterValidate: (user, param) => {
+       beforeCreate: (user, param) => {
         const hashedPassword = hashPassword(user.password);
         user.password = hashedPassword;
+        user.balance = 0;
       },
     },
   });
