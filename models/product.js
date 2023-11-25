@@ -41,11 +41,11 @@ module.exports = (sequelize, DataTypes) => {
           msg: "price must be an integer/number"
         },
         min: {
-          args: 0,
+          args: [0],
           msg: "price must not be less than 0"
         },
         max: {
-          args: 50000000,
+          args: [50000000],
           msg: "price must not be more than 50000000"
         },
         notEmpty: {
@@ -67,7 +67,7 @@ module.exports = (sequelize, DataTypes) => {
           msg: "stock must be an integer/number"
         },
         min: {
-          args: 5,
+          args: [5],
           msg: "stock must not drop below 5"
         },
         notEmpty: {
