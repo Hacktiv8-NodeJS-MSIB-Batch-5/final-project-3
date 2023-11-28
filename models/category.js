@@ -40,24 +40,28 @@ module.exports = (sequelize, DataTypes) => {
           args: true,
           msg: "sold_product_amount must be integer/number"
         },
+        notEmpty: {
+          args: true,
+          msg: "sold_product_amount is required"
+        },
         notNull: {
           args: true,
-          msg: "sold_product_amount cannot be null"
+          msg: "sold_product_amount is required"
         },
-        // min: {
-        //   args: 0,
-        //   msg: "sold_product_amount must not be less than 0"
-        // },
+        min: {
+          args: [0],
+          msg: "sold_product_amount must not be less than 0"
+        },
       }
     }
   }, {
     sequelize,
     modelName: 'Category',
-    // hooks: {
-    //   beforeCreate: (category, args) => {
-    //     category.sold_product_amount = 0;
-    //   },
-    // },
+    hooks: {
+      beforeValidate: (category, args) => {
+        if (category.isNewRecord) category.sold_product_amount = 0;
+      },
+    },
   });
   return Category;
 };

@@ -1,5 +1,4 @@
 exports.moneyFormat = (value) =>  {
-  console.log("val", value);
   let rupiah = new Intl.NumberFormat('id-ID', {
     style: "currency",
     currency: "IDR",

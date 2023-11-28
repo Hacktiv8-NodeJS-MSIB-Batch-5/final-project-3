@@ -16,10 +16,8 @@ exports.register = async (req, res) => {
     password: password,
     gender: gender,
     role: role,
-    // balance: balance,
   })
     .then((user) => {
-      console.log("user", user);
       const token = generateToken({
         id: user.id,
         full_name: user.full_name,
@@ -135,7 +133,6 @@ exports.updateUser = async(req, res) => {
       });
     })
     .catch((e) => {
-      console.log(e);
       const ret = [];
       try{
         // log all errors on sequelize schema constraint & validation
@@ -182,44 +179,43 @@ exports.deleteUser = async(req, res) => {
 
 exports.userTopup = async (req, res) => {
   const userId = Number(req.user_id);
-  const user = await User.findByPk(userId);
-  if(!user){
-    return res.status(404).json({message: "User not found"})
-  }
 
-  const addedBalance = Number(req.body.balance);
-  const updatedBalance = Number(user.balance) + addedBalance;
-  console.log(updatedBalance, typeof(updatedBalance));
+  try{
+    const user = await User.findByPk(userId);
+    if(!user){
+      return res.status(404).json({message: "User not found"})
+    }
 
-  await User.update({
-    balance: updatedBalance,
-  }, {
-    where: { id: userId },
-    returning: true,
-    plain: true,
-  })
-    .then((result) => {
-      console.log(result[1].dataValues);
-      const balance = moneyFormat(result[1].dataValues.balance);
-      
-      res.status(200).json({
-        message: `Your balance has been successfully updated to ${balance}`
-      });
+    const addedBalance = Number(req.body.balance);
+    const updatedBalance = Number(user.balance) + addedBalance;
+
+    await user.update({
+      balance: updatedBalance,
     })
-    .catch((e) => {
-      const ret = [];
-      try{
-        // log all errors on sequelize schema constraint & validation
-        e.errors.map( er => {
-          ret.push({
-            [er.path]: er.message,
-          });
+      .then((result) => {
+        const balance = moneyFormat(user.balance);
+        
+        res.status(200).json({
+          message: `Your balance has been successfully updated to ${balance}`
         });
-      } catch(e) {}
-      res.status(500).json({
-        error: "An error occured while attempting to top up",
-        name: e.name,
-        message: ret || e.message
-      });
-    })
+      })
+      .catch((e) => {
+        const ret = [];
+        try{
+          // log all errors on sequelize schema constraint & validation
+          e.errors.map( er => {
+            ret.push({
+              [er.path]: er.message,
+            });
+          });
+        } catch(e) {}
+        res.status(500).json({
+          error: "An error occured while attempting to top up",
+          name: e.name,
+          message: ret || e.message
+        });
+      })
+  } catch (e){
+    res.status(500).json({error: e});
+  }
 }

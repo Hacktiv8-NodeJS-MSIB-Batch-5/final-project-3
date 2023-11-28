@@ -1,88 +1,92 @@
 const { moneyFormat } = require("../helpers/utils");
-const { User, Product, Category, TransactionHistory } = require("../models");
+const { User, Product, Category, TransactionHistory, sequelize } = require("../models");
 
 exports.postTransaction = async (req, res) => {
-  const { productId, quantity } = req.body;
+  const productId = req.body.productId;
+  const quantity = Number(req.body.quantity);
   const userId = req.user_id;
 
-  const product = await Product.findByPk(productId);
-  if (product){
+  if (quantity <= 0){
+    return res.status(500).json({ message: "Amount bought must be more than 1" });
+  }
+  try{
+    const product = await Product.findByPk(productId);
+    if (!product){
+      return res.status(500).json({ message: "Product not found" });
+    }
+
     const productdata = product.dataValues;
     const stock = productdata.stock;
     const totalprice = productdata.price * quantity;
-    if (stock >= quantity){
-      let user = await User.findByPk(userId);
-      user = user.dataValues;
-      const userBalance = user.balance;
-      if (userBalance >= totalprice){
-        try{
-          await Product.update({
-            stock: stock - quantity
-          }, {
-            where: { id: productdata.id }
-          });
 
-          const balance = userBalance - totalprice;
-          await User.update({
-            balance
-          }, {
-            where: { id: userId }
-          });
+    if (stock < quantity){
+      return res.status(400).json({ message: "Not enough stock" })
+    }
 
-          const category = await Category.findByPk(productdata.CategoryId);
-          const sold_product_amount = category.sold_product_amount + quantity;
-          console.log("ini", quantity);
-          console.log("ini", category.sold_product_amount);
-          console.log("ini", sold_product_amount);
-          await Category.update({
-            sold_product_amount: 1
-          }, {
-            where: { id: productdata.CategoryId }
-          });
+    let user = await User.findByPk(userId);
+    const userBalance = user.dataValues.balance;
 
-          await TransactionHistory.create({
-            ProductId: productdata.id,
-            UserId: user.id,
+    if (userBalance < totalprice){
+      return res.status(400).json({ message: "Not enough balance, please top up" });
+    }
+
+    try{
+      const result = await sequelize.transaction( async(t) => {
+        await product.update({
+          stock: stock - quantity
+        }, {transaction: t});
+
+        const balance = userBalance - totalprice;
+        await user.update({
+          balance
+        }, {transaction: t});
+
+        const category = await Category.findByPk(productdata.CategoryId);
+        const sold_product_amount = category.sold_product_amount + quantity;
+        // console.log("ini", quantity);
+        // console.log("ini", category.sold_product_amount, typeof(category.sold_product_amount));
+        // console.log("ini", sold_product_amount);
+        await category.update({
+          sold_product_amount
+        }, {transaction: t});
+
+        await TransactionHistory.create({
+          ProductId: productdata.id,
+          UserId: user.id,
+          quantity: quantity,
+          total_price: totalprice,
+        }, {transaction: t});
+
+        res.status(201).send({
+          message: "You have successfully purchase the product",
+          transactionBill: {
+            total_price: moneyFormat(totalprice),
             quantity: quantity,
-            total_price: totalprice,
-          });
-
-          res.status(201).send({
-            message: "You have successfully purchase the product",
-            transactionBill: {
-              total_price: moneyFormat(totalprice),
-              quantity: quantity,
-              product_name: productdata.title,
-            }
-          });
-        }
-        catch(e){
-          const ret = [];
-          try{
-            // log all errors on sequelize schema constraint & validation
-            e.errors.map( er => {
-              ret.push({
-                [er.path]: er.message,
-              });
-            });
-          } catch(e) {}
-          res.status(500).json({
-            error: "An error occured while attempting to POST new Transaction History", 
-            name: e.name,
-            message: ret || e.message
-          });
-        }
-      }
-      else{
-        res.status(400).json({ message: "Not enough balance, please top up" });
-      }
+            product_name: productdata.title,
+          }
+        });
+      })
+      
     }
-    else{
-      res.status(400).json({ message: "Not enough stock" })
+    catch(e){
+      // console.log(e);
+      const ret = [];
+      try{
+        // log all errors on sequelize schema constraint & validation
+        e.errors.map( er => {
+          ret.push({
+            [er.path]: er.message,
+          });
+        });
+      } catch(e) {}
+      res.status(500).json({
+        error: "An error occured while attempting to POST new Transaction History", 
+        name: e.name,
+        message: ret || e.message
+      });
     }
-  }
-  else{
-    res.status(500).json({ message: "Product not found" });
+  } catch (e){
+    res.status(500).json({message: "An error occured while attempting to POST new Transaction History"})
   }
 }
 
@@ -97,7 +101,7 @@ exports.getUserTransactions = async(req, res) => { //based on user id
         as: "Products",
         attributes: ['id','title','price','stock','CategoryId']
       }],
-      attributes: ['id', 'quantity', 'total_price', 'createdAt'],
+      attributes: ['ProductId', 'UserId','quantity', 'total_price', 'createdAt', 'updatedAt'],
     });
 
     res.status(200).json({ transactionHistories: userTransactions });
@@ -117,7 +121,7 @@ exports.getAllTransactions = async(req, res) => {
         { model: Product, as: "Products", attributes: ['id','title','price','stock','CategoryId'] },
         { model: User, as: "User", attributes: ['id','email','balance','gender','role'] },
       ],
-      attributes: ['id', 'quantity', 'total_price', 'createdAt'],
+      attributes: ['ProductId', 'UserId', 'quantity', 'total_price', 'createdAt', 'updatedAt'],
     });
 
     res.status(200).json({ transactionHistories: allTransactions });
@@ -132,30 +136,29 @@ exports.getAllTransactions = async(req, res) => {
 
 exports.getTransactionById = async(req, res) => { //based on transaction id
   const transactionId = req.params.transactionId;
-  const userId = req.user_id
+  const userId = req.user_id;
 
   try {
     const transaction = await TransactionHistory.findByPk(transactionId, {
       include: [
         { model: Product, as: "Products", attributes: ['id','title','price','stock','CategoryId'] }
-        // { model: User, as: "User", attributes: ['id','email','balance','gender','role'] },
       ],
-      attributes: ['id', 'ProductId', 'UserId', 'quantity', 'total_price', 'createdAt', 'updatedAt'],
+      attributes: ['ProductId', 'UserId', 'quantity', 'total_price', 'createdAt', 'updatedAt'],
     });
+    if (!transaction){
+      return res.status(404).json({ message: "Transaction not found" });
+      //di atas spy kalau enggak ada, nggak error saat panggil transaction.UserId di bawah
+    }
     
-    if(userId != 1 && userId !== transaction.UserId){
-      console.log(userId);
-      console.log(transaction.UserId);
+    const user = await User.findByPk(userId); 
+    if(user.dataValues.role != "admin" && userId !== transaction.UserId){
+      // console.log(userId);
+      // console.log(transaction.UserId);
       return res.status(401).json({
         message: "You are not authorized to do this action"
       })
     }
-
-    if (transaction) {
-      res.status(200).json({ transaction });
-    } else {
-      res.status(404).json({ message: "Transaction not found" });
-    }
+    res.status(200).json(transaction);
   } catch (error) {
     res.status(500).json({
       error: "An error occurred while attempting to fetch the transaction",

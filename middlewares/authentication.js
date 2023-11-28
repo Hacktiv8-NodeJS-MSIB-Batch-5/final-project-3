@@ -15,7 +15,7 @@ const verify = async (req, res, next) => {
 };
 
 const generateToken = (payload) => {
-  return jwt.sign(payload, privateKey, { algorithm: "HS256", expiresIn: "1h" });
+  return jwt.sign(payload, privateKey, { algorithm: "HS256", expiresIn: "24h" });
 };
 
 module.exports = {

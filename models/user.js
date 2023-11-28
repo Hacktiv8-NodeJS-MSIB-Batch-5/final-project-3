@@ -106,6 +106,7 @@ module.exports = (sequelize, DataTypes) => {
     },
     balance: {
       type: DataTypes.INTEGER,
+      allowNull: false,
       validate: {
         isInt: {
           args: true,
@@ -121,7 +122,11 @@ module.exports = (sequelize, DataTypes) => {
         },
         notEmpty: {
           args: true,
-          msg: "balance is required"
+          msg: "sold_product_amount is required"
+        },
+        notNull: {
+          args: true,
+          msg: "sold_product_amount is required"
         },
       }
     },
@@ -129,11 +134,16 @@ module.exports = (sequelize, DataTypes) => {
     sequelize,
     modelName: 'User',
     hooks: {
-       beforeCreate: (user, param) => {
+      beforeValidate: (user, param) => {
+        if (user.isNewRecord){
+          console.log("new");
+          user.balance = 0;
+        }
+      },
+      beforeCreate: (user, param) => {
         const hashedPassword = hashPassword(user.password);
         user.password = hashedPassword;
-        user.balance = 0;
-      },
+      }
     },
   });
   return User;

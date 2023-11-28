@@ -80,7 +80,20 @@ module.exports = (sequelize, DataTypes) => {
         },
       }
     },
-    CategoryId: DataTypes.INTEGER,
+    CategoryId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      validate: {
+        notNull: {
+          args: true,
+          msg: "CategoryId is required"
+        },
+        notEmpty: {
+          args: true,
+          msg: "CategoryId is required"
+        },
+      }
+    },
   }, {
     sequelize,
     modelName: 'Product',

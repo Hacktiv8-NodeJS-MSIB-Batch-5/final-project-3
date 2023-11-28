@@ -5,7 +5,8 @@ exports.postCategory = async(req, res) => {
   // const defaultAmount = 0
 
   await Category.create({
-    type, sold_product_amount: 0
+    type,
+    // sold_product_amount: 0
   })
     .then((category) => {
       res.status(201).json({
@@ -42,7 +43,8 @@ exports.getAllCategories = async(req, res) => {
       include: [{ 
         model: Product, 
         as: "Products",
-        attributes: ['id','title','price','stock','CategoryId'] }]
+        // attributes: ['id','title','price','stock','CategoryId']
+      }]
     })
     if(category.length == 0){
       return res.status(404).json({
