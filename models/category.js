@@ -13,7 +13,7 @@ module.exports = (sequelize, DataTypes) => {
       // define association here
       this.hasMany(models.Product, {
         foreignKey: "CategoryId",
-        as: "Product"
+        as: "Products"
       })
     }
   }
@@ -34,25 +34,30 @@ module.exports = (sequelize, DataTypes) => {
     },
     sold_product_amount: {
       type: DataTypes.INTEGER,
+      allowNull: false,
       validate: {
         isInt: {
           args: true,
           msg: "sold_product_amount must be integer/number"
         },
-        min: {
-          args: 0,
-          msg: "sold_product_amount must not be less than 0"
+        notNull: {
+          args: true,
+          msg: "sold_product_amount cannot be null"
         },
+        // min: {
+        //   args: 0,
+        //   msg: "sold_product_amount must not be less than 0"
+        // },
       }
     }
   }, {
     sequelize,
     modelName: 'Category',
-    hooks: {
-      beforeCreate: (category, args) => {
-        category.sold_product_amount = 0;
-      },
-    },
+    // hooks: {
+    //   beforeCreate: (category, args) => {
+    //     category.sold_product_amount = 0;
+    //   },
+    // },
   });
   return Category;
 };
