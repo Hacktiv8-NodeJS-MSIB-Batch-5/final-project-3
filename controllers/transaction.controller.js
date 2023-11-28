@@ -22,17 +22,20 @@ exports.postTransaction = async (req, res) => {
             where: { id: productdata.id }
           });
 
-          const { balance } = userBalance - totalprice;
+          const balance = userBalance - totalprice;
           await User.update({
             balance
           }, {
             where: { id: userId }
           });
 
-          const category = Category.findByPk(productdata.CategoryId);
-          const { sold_product_amount } = category.sold_product_amount + quantity;
+          const category = await Category.findByPk(productdata.CategoryId);
+          const sold_product_amount = category.sold_product_amount + quantity;
+          console.log("ini", quantity);
+          console.log("ini", category.sold_product_amount);
+          console.log("ini", sold_product_amount);
           await Category.update({
-            sold_product_amount
+            sold_product_amount: 1
           }, {
             where: { id: productdata.CategoryId }
           });
@@ -80,5 +83,84 @@ exports.postTransaction = async (req, res) => {
   }
   else{
     res.status(500).json({ message: "Product not found" });
+  }
+}
+
+exports.getUserTransactions = async(req, res) => { //based on user id
+  const userId = req.user_id;
+
+  try {
+    const userTransactions = await TransactionHistory.findAll({
+      where: { UserId: userId },
+      include: [{ 
+        model: Product, 
+        as: "Products",
+        attributes: ['id','title','price','stock','CategoryId']
+      }],
+      attributes: ['id', 'quantity', 'total_price', 'createdAt'],
+    });
+
+    res.status(200).json({ transactionHistories: userTransactions });
+  } catch (error) {
+    res.status(500).json({
+      error: "An error occurred while attempting to fetch user transactions",
+      name: error.name,
+      message: error.message,
+    });
+  }
+}
+
+exports.getAllTransactions = async(req, res) => {
+  try {
+    const allTransactions = await TransactionHistory.findAll({
+      include: [
+        { model: Product, as: "Products", attributes: ['id','title','price','stock','CategoryId'] },
+        { model: User, as: "User", attributes: ['id','email','balance','gender','role'] },
+      ],
+      attributes: ['id', 'quantity', 'total_price', 'createdAt'],
+    });
+
+    res.status(200).json({ transactionHistories: allTransactions });
+  } catch (error) {
+    res.status(500).json({
+      error: "An error occurred while attempting to fetch all transactions",
+      name: error.name,
+      message: error.message,
+    });
+  }
+}
+
+exports.getTransactionById = async(req, res) => { //based on transaction id
+  const transactionId = req.params.transactionId;
+  const userId = req.user_id
+
+  try {
+    const transaction = await TransactionHistory.findByPk(transactionId, {
+      include: [
+        { model: Product, as: "Products", attributes: ['id','title','price','stock','CategoryId'] }
+        // { model: User, as: "User", attributes: ['id','email','balance','gender','role'] },
+      ],
+      attributes: ['id', 'ProductId', 'UserId', 'quantity', 'total_price', 'createdAt', 'updatedAt'],
+    });
+    
+    if(userId != 1 && userId !== transaction.UserId){
+      console.log(userId);
+      console.log(transaction.UserId);
+      return res.status(401).json({
+        message: "You are not authorized to do this action"
+      })
+    }
+
+    if (transaction) {
+      res.status(200).json({ transaction });
+    } else {
+      res.status(404).json({ message: "Transaction not found" });
+    }
+  } catch (error) {
+    res.status(500).json({
+      error: "An error occurred while attempting to fetch the transaction",
+      name: error.name,
+      message: error.message,
+    });
   }
 }
