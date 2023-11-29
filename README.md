@@ -4,6 +4,9 @@
 1. Maulana Daffa Ardiansyah (INJS-KS06-12)
 2. Erin Gunawan (INJS-KS06-03)
 
+## Link Deployment
+https://injs06-fp3-team11.up.railway.app/
+
 ## Cara Install
 1. run `npm install` untuk menginstall dependensi
 2. copy `.env.example` ke `.env` dan isi file `.env` sesuai database aplikasi
